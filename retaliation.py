@@ -77,7 +77,7 @@ import time
 import socket
 import re
 import json
-import urllib2
+import urllib
 import base64
 
 import usb.core
@@ -94,7 +94,7 @@ import usb.util
 # to shoot.
 #
 COMMAND_SETS = {
-    "will" : (
+    "anders.marchsteiner" : (
         ("zero", 0), # Zero/Park to know point (bottom-left)
         ("led", 1), # Turn the LED on
         ("right", 3250),
@@ -103,14 +103,21 @@ COMMAND_SETS = {
         ("led", 0), # Turn the LED back off
         ("zero", 0), # Park after use for next time
     ),
-    "tom" : (
+    "elin.skaflestad" : (
         ("zero", 0), 
         ("right", 4400),
         ("up", 200),
         ("fire", 4),
         ("zero", 0),
     ),
-    "chris" : (      # That's me - just dance around and missfire!
+    "pal.eie" : (
+        ("zero", 0), 
+        ("right", 4400),
+        ("up", 200),
+        ("fire", 4),
+        ("zero", 0),
+    ),
+    "kim.oftedal" : (      # That's me - just dance around and missfire!
         ("zero", 0),
         ("right", 5200),
         ("up", 500),
@@ -132,13 +139,7 @@ JENKINS_NOTIFICATION_UDP_PORT   = 22222
 # The URL of your Jenkins server - used to callback to determine who broke 
 # the build.
 #
-JENKINS_SERVER                  = "http://192.168.1.100:23456"
-
-#
-# If you're Jenkins server is secured by HTTP basic auth, sent the
-# username and password here.  Else leave this blank.
-HTTPAUTH_USER                   = ""
-HTTPAUTH_PASS                   = ""
+JENKINS_SERVER                  = "https://dev01-abacus.skypoint.no/jenkins"
 
 ##########################  ENG CONFIG  #########################
 
@@ -259,32 +260,16 @@ def jenkins_target_user(user):
         print "WARNING: No target command set defined for user %s" % user
 
 
-def read_url(url):
-    request = urllib2.Request(url)
-
-    if HTTPAUTH_USER and HTTPAUTH_PASS:
-        authstring = base64.encodestring('%s:%s' % (HTTPAUTH_USER, HTTPAUTH_PASS))
-        authstring = authstring.replace('\n', '')
-        request.add_header("Authorization", "Basic %s" % authstring)
-
-    return urllib2.urlopen(request).read()
-
-
 def jenkins_get_responsible_user(job_name):
-    # Call back to Jenkins and determin who broke the build. (Hacky)
-    # We do this by crudly parsing the changes on the last failed build
+    # Call back to Jenkins and determin who broke the build. 
     
-    changes_url = JENKINS_SERVER + "/job/" + job_name + "/lastFailedBuild/changes"
-    changedata = read_url(changes_url)
+    changes_url = JENKINS_SERVER + "/job/" + job_name + "/lastFailedBuild/api/json"
+    request = urllib.urlopen(changes_url)
+    changedata = json.load(request)
 
-    # Look for the /user/[name] link
-    m = re.compile('/user/([^/"]+)').search(changedata)
-    if m:
-        return m.group(1)
-    else:
-        return None
-
-
+    return changedata["actions"][3]["parameters"][18]["value"]
+ 
+ 
 def jenkins_wait_for_event():
 
     # Data in the format: 
