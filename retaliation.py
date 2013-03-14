@@ -94,38 +94,33 @@ import usb.util
 # to shoot.
 #
 COMMAND_SETS = {
-    "anders.marchsteiner" : (
+    "kim.oftedal@bouvet.no" : (
         ("zero", 0), # Zero/Park to know point (bottom-left)
-        ("led", 1), # Turn the LED on
-        ("right", 3250),
-        ("up", 540),
-        ("fire", 4), # Fire a full barrage of 4 missiles
-        ("led", 0), # Turn the LED back off
+        ("right", 4200),
+        ("up", 200),
+        ("fire", 1), # Fire a full barrage of 4 missiles
         ("zero", 0), # Park after use for next time
     ),
-    "elin.skaflestad" : (
+    "elin.skaflestad@bouvet.no" : (
         ("zero", 0), 
-        ("right", 4400),
-        ("up", 200),
-        ("fire", 4),
-        ("zero", 0),
-    ),
-    "pal.eie" : (
-        ("zero", 0), 
-        ("right", 4400),
-        ("up", 200),
-        ("fire", 4),
-        ("zero", 0),
-    ),
-    "kim.oftedal" : (      # That's me - just dance around and missfire!
-        ("zero", 0),
-        ("right", 5200),
-        ("up", 500),
-        ("pause", 5000),
-        ("left", 2200),
-        ("down", 500),
+        ("right", 1300),
+        ("up", 550),
         ("fire", 1),
         ("zero", 0),
+    ),
+    "anders.marchsteiner@bouvet.no" : ( 
+		("zero", 0), # Zero/Park to know point (bottom-left)
+        ("right", 5000),
+        ("up", 500),
+        ("fire", 1), # Fire a full barrage of 4 missiles
+        ("zero", 0), # Park after use for next time
+    ),
+    "pal.eie@bouvet.no" : ( 
+		("zero", 0), # Zero/Park to know point (bottom-left)
+        ("right", 300),
+        ("up", 600),
+        ("fire", 1), # Fire a full barrage of 4 missiles
+        ("zero", 0), # Park after use for next time
     ),
 }
 
@@ -140,6 +135,12 @@ JENKINS_NOTIFICATION_UDP_PORT   = 22222
 # the build.
 #
 JENKINS_SERVER                  = "https://dev01-abacus.skypoint.no/jenkins"
+
+#
+# If you're Jenkins server is secured by HTTP basic auth, sent the
+# username and password here.  Else leave this blank.
+HTTPAUTH_USER                   = ""
+HTTPAUTH_PASS                   = ""
 
 ##########################  ENG CONFIG  #########################
 
@@ -169,7 +170,6 @@ def usage():
     print "     fire  - fire <value> times (between 1-4)"
     print "     zero  - park at zero position (bottom-left)"
     print "     pause - pause <value> milliseconds"
-    print "     led   - turn the led on or of (1 or 0)"
     print ""
     print "     <command_set_name> - run/test a defined COMMAND_SET"
     print "             e.g. run:"
@@ -199,8 +199,6 @@ def setup_usb():
 def send_cmd(cmd):
     DEVICE.ctrl_transfer(0x21, 0x09, 0, 0, [0x02, cmd, 0x00,0x00,0x00,0x00,0x00,0x00])
 
-def led(cmd):
-    DEVICE.ctrl_transfer(0x21, 0x09, 0, 0, [0x03, cmd, 0x00,0x00,0x00,0x00,0x00,0x00])
 
 def send_move(cmd, duration_ms):
     send_cmd(cmd)
@@ -224,11 +222,6 @@ def run_command(command, value):
         send_move(LEFT, 8000)
     elif command == "pause" or command == "sleep":
         time.sleep(value / 1000.0)
-    elif command == "led":
-        if value == 0:
-            led(0x00)
-        else:
-            led(0x01)
     elif command == "fire" or command == "shoot":
         if value < 1 or value > 4:
             value = 1
@@ -260,32 +253,47 @@ def jenkins_target_user(user):
         print "WARNING: No target command set defined for user %s" % user
 
 
+def read_url(url):
+    request = urllib2.Request(url)
+
+    if HTTPAUTH_USER and HTTPAUTH_PASS:
+        authstring = base64.encodestring('%s:%s' % (HTTPAUTH_USER, HTTPAUTH_PASS))
+        authstring = authstring.replace('\n', '')
+        request.add_header("Authorization", "Basic %s" % authstring)
+
+    return urllib2.urlopen(request).read()
+
+
 def jenkins_get_responsible_user(job_name):
-    # Call back to Jenkins and determin who broke the build. 
-    
     changes_url = JENKINS_SERVER + "/job/" + job_name + "/lastFailedBuild/api/json"
     request = urllib.urlopen(changes_url)
     changedata = json.load(request)
 
     return changedata["actions"][3]["parameters"][18]["value"]
- 
- 
+
+
 def jenkins_wait_for_event():
 
     # Data in the format: 
     #   {"name":"Project", "url":"JobUrl", "build":{"number":1, "phase":"STARTED", "status":"FAILURE" }}
 
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    sock.bind(('', JENKINS_NOTIFICATION_UDP_PORT))
+    sock.bind(("", JENKINS_NOTIFICATION_UDP_PORT))
 
     while True:
         data, addr = sock.recvfrom(8 * 1024)
+        print "Data recieved..."
         try:
             notification_data = json.loads(data)
+            print "JSON loaded..."
             status = notification_data["build"]["status"].upper()
+            print "Status: " + status
             phase  = notification_data["build"]["phase"].upper()
+            print "Phase: " + phase
             if phase == "FINISHED" and status.startswith("FAIL"):
+                print "Process request..."
                 target = jenkins_get_responsible_user(notification_data["name"])
+                print "Responsible was " + target
                 if target == None:
                     print "WARNING: Could not identify the user who broke the build!"
                     continue
