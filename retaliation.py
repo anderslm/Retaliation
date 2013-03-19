@@ -195,6 +195,11 @@ def setup_usb():
 
     DEVICE.set_configuration()
 
+def reset_usb():
+    global DEVICE
+
+    DEVICE.reset_device()
+
 
 def send_cmd(cmd):
     DEVICE.ctrl_transfer(0x21, 0x09, 0, 0, [0x02, cmd, 0x00,0x00,0x00,0x00,0x00,0x00])
@@ -238,6 +243,7 @@ def run_command_set(commands):
     setup_usb()
     for cmd, value in commands:
         run_command(cmd, value)
+    reset_usb
 
 
 def jenkins_target_user(user):
