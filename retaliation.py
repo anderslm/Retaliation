@@ -235,6 +235,7 @@ def run_command(command, value):
 
 
 def run_command_set(commands):
+    setup_usb()
     for cmd, value in commands:
         run_command(cmd, value)
 
@@ -309,8 +310,6 @@ def main(args):
     if len(args) < 2:
         usage()
         sys.exit(1)
-
-    setup_usb()
 
     if args[1] == "stalk":
         print "Listening and waiting for Jenkins failed build events..."
