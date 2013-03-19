@@ -195,6 +195,7 @@ def setup_usb():
 
     DEVICE.set_configuration()
 
+
 def reset_usb():
     global DEVICE
 
