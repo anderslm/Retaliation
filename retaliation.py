@@ -273,11 +273,14 @@ def read_url(url):
 
 
 def jenkins_get_responsible_user(job_name):
+    token = "GERRIT_PATCHSET_UPLOADER_EMAIL"
     changes_url = JENKINS_SERVER + "/job/" + job_name + "/lastFailedBuild/api/json"
     request = urllib.urlopen(changes_url)
     changedata = json.load(request)
 
-    return changedata["actions"][3]["parameters"][18]["value"]
+    for x in range(0, len(changedata["actions"][3]["parameters"])):
+        if (changedata["actions"][3]["parameters"][x]["name"] == token):
+            return changedata["actions"][3]["parameters"][x]["value"]
 
 
 def jenkins_wait_for_event():
