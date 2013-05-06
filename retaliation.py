@@ -108,8 +108,15 @@ COMMAND_SETS = {
         ("fire", 1),
         ("zero", 0),
     ),
+    "martin.forre@bouvet.no" : ( 
+	("zero", 0), # Zero/Park to know point (bottom-left)
+        ("right", 5250),
+        ("up", 2000),
+        ("fire", 1), # Fire a full barrage of 4 missiles
+        ("zero", 0), # Park after use for next time
+    ),
     "anders.marchsteiner@bouvet.no" : ( 
-		("zero", 0), # Zero/Park to know point (bottom-left)
+	("zero", 0), # Zero/Park to know point (bottom-left)
         ("right", 5000),
         ("up", 500),
         ("fire", 1), # Fire a full barrage of 4 missiles
